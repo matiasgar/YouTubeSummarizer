@@ -101,10 +101,21 @@
             transcriptButton.click();
             console.log('Clicked on transcript button.');
 
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            console.log('Waited for 2 seconds after clicking the transcript button.');
-
-            const transcriptElements = document.querySelectorAll('.segment-text.style-scope.ytd-transcript-segment-renderer');
+            // Poll until transcript segments appear (YouTube loads them async)
+            let transcriptElements = [];
+            const maxWaitMs = 10000;
+            const pollInterval = 500;
+            let waited = 0;
+            while (waited < maxWaitMs) {
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                waited += pollInterval;
+                // New YouTube DOM: transcript-segment-view-model elements
+                transcriptElements = document.querySelectorAll('transcript-segment-view-model span.yt-core-attributed-string');
+                if (transcriptElements.length > 0) break;
+                // Fallback: old YouTube DOM (in case they revert)
+                transcriptElements = document.querySelectorAll('.segment-text.style-scope.ytd-transcript-segment-renderer');
+                if (transcriptElements.length > 0) break;
+            }
             console.log('Transcript elements found:', transcriptElements.length);
 
             const transcript = Array.from(transcriptElements)
@@ -473,7 +484,8 @@
                         promptArea.dispatchEvent(new Event('change', { bubbles: true }));
 
                         // Check if the send button is disabled BEFORE attempting to send
-                        const sendButton = document.querySelector('button[aria-label="Send Message"]');
+                        const sendButton = document.querySelector('button[aria-label="Send Message"]') ||
+                            document.querySelector('button[aria-label="Send message"]');
                         await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay for UI to update
 
                         if (sendButton && sendButton.disabled) {
