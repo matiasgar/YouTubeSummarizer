@@ -29,7 +29,7 @@ User navigates to a YouTube watch page and clicks the extension icon in the Chro
 - If yes, injects `content.js` into the YouTube tab via `chrome.scripting.executeScript`
 
 ### Step 2: content.js — Section 1 (YouTube Page Handler)
-- Shows a pink notification banner ("Sending video to ChatGPT")
+- Shows a pink notification banner ("Extracting transcript...", then updates to show which AI service will be used)
 - Waits 2 seconds for page to fully load
 - Finds and clicks the `button[aria-label="Show transcript"]` button
 - **Polls** (up to 10 seconds, every 500ms) for transcript segments to appear:
@@ -39,7 +39,7 @@ User navigates to a YouTube watch page and clicks the extension icon in the Chro
 - Gets the video title from `yt-formatted-string.style-scope.ytd-watch-metadata[force-default-style]`
 - Builds a detailed summarization prompt with 3 sections: MAIN TAKE, SUMMARY, FRESH IDEAS
 - Stores the prompt in `chrome.storage.local`
-- **Routing logic:** If transcript < 32,000 chars → opens ChatGPT; if longer → opens Claude (Claude has a larger context window)
+- **Routing logic:** If transcript < 60,000 chars → opens ChatGPT; if longer → opens Claude (Claude has a larger context window). The 60K char threshold (~15K tokens) is conservative — well within ChatGPT Plus's 32K token limit with headroom for the prompt template and non-English tokenization.
 
 ### Step 3: content.js — Section 2 (ChatGPT Handler)
 - Runs on `chat.openai.com` and `chatgpt.com` pages
@@ -84,11 +84,11 @@ This extension was originally developed by Matias across three iterations:
 
 The code in this repo was imported from iteration #3 (the most feature-complete) and then fixed in Session 0.
 
-## Current State (last updated: 2026-03-13, end of Session 0)
+## Current State (last updated: 2026-03-13, end of Session 1)
 
-- **Version:** 1.1
-- **Git branch:** Working on `dev`, both `dev` and `master` pushed to remote
-- **Status:** Extension is working. Tested by Matias on 2026-03-13 and confirmed functional.
+- **Version:** 1.2
+- **Git branch:** Working on `dev`, pushed to remote. `master` has not been updated since Session 0.
+- **Status:** Extension changes made but not yet tested by Matias (routing threshold change, notification fix, rename).
 - **Repo visibility:** Public (https://github.com/matiasgar/YouTubeSummarizer)
 
 ## What Was Done in Session 0 (2026-03-13)
@@ -125,12 +125,37 @@ This was the project setup and first bug fix session:
 
 6. **Tested** — Matias loaded the extension and confirmed it works.
 
+## What Was Done in Session 1 (2026-03-13)
+
+This session focused on research, routing logic update, notification fix, and full rename.
+
+1. **Researched ChatGPT/Claude context window limits (March 2026):**
+   - ChatGPT web interface: GPT-4o retired Feb 2026, replaced by GPT-5.x models. Context limits: 8K tokens (free), 32K tokens (Plus), 128K (Pro), 196K (Enterprise)
+   - Claude web interface: 200K tokens on all plans (free and paid)
+   - Conclusion: the old 32K char routing threshold was very conservative but the dual-routing logic is still valid (ChatGPT has lower limits than Claude for most users)
+
+2. **Raised routing threshold** from 32,000 to 60,000 chars (~15K tokens). Conservative enough to stay well within ChatGPT Plus's 32K token limit with headroom for prompt overhead and non-English tokenization.
+
+3. **Fixed notification banner** — Previously hardcoded "Sending video to ChatGPT" even when routing to Claude. Now shows "Extracting transcript..." initially, then updates to "Sending video to ChatGPT" or "Sending video to Claude" after the routing decision.
+
+4. **Renamed everything:**
+   - Chrome extension: "Easy YouTube Summary" → "YouTube Summarizer"
+   - All user-facing notification text: "Easy YouTube Summarizer says:" → "YouTube Summarizer says:"
+   - GitHub repo: `matiasgar/VideoSummarizer` → `matiasgar/YouTubeSummarizer` (GitHub redirects old URL)
+   - Local git remote updated
+   - All docs updated (CLAUDE.md, session-primer.md)
+
+5. **Bumped version** to 1.2
+
+6. **Not yet tested** — Matias needs to reload the extension in Chrome and verify all changes work.
+
 ## Known Issues / Potential Future Work
 
 - **Fragile selectors:** The extension depends on specific CSS selectors in YouTube, ChatGPT, and Claude's DOMs. Any of these services can change their HTML at any time and break the extension again. The selector table above documents what was verified and when.
 - **No error recovery for transcript panel loading:** If the transcript panel takes more than 10 seconds to load, the extension gives up. Could be made more resilient.
-- **No popup/options UI:** The extension has no settings page. The 32K character threshold for ChatGPT vs Claude routing is hardcoded.
+- **No popup/options UI:** The extension has no settings page. The 60K character threshold for ChatGPT vs Claude routing is hardcoded.
 - **Platform compatibility:** Works on any OS (Mac, Windows, Linux) with Chrome. No platform-specific code.
+- **Could simplify to Claude-only:** Claude's free tier now handles 200K tokens, far more than any YouTube transcript. Dropping ChatGPT support would halve the fragile selectors to maintain. Matias decided against this for now (Session 1).
 
 ## Session Hygiene Reminder
 
