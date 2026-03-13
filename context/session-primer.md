@@ -90,7 +90,7 @@ The code in this repo was imported from iteration #3 (the most feature-complete)
 
 - **Version:** 1.2
 - **Git branch:** Working on `dev`, pushed to remote. `master` has not been updated since Session 0.
-- **Status:** Session 2 changes (auto-disable thinking on ChatGPT) need testing by Matias.
+- **Status:** All Session 2 changes tested and working. Extension auto-disables extended thinking on ChatGPT.
 - **Repo visibility:** Public (https://github.com/matiasgar/YouTubeSummarizer)
 
 ## What Was Done in Session 0 (2026-03-13)
@@ -153,13 +153,19 @@ This session focused on research, routing logic update, notification fix, and fu
 
 ## What Was Done in Session 2 (2026-03-13)
 
-1. **Auto-disable extended thinking on ChatGPT:** When the extension opens ChatGPT, it now checks the model picker. If "Thinking" or "Pro" mode is active, it automatically switches to "Auto" before injecting the prompt. This ensures fast responses without reasoning overhead.
+1. **Auto-disable extended thinking on ChatGPT:** When the extension opens ChatGPT, it now checks the model picker's `aria-label`. If "Thinking" or "Pro" mode is active, it opens the model dropdown and switches to "Auto" before injecting the prompt.
 
-2. **Graceful failure:** The model-switching logic is wrapped in try/catch with null checks at every step. If OpenAI changes their DOM and the selectors break, the extension silently proceeds with whatever model was active — no errors, no interruption.
+2. **Key technical finding — Radix UI requires PointerEvents:** ChatGPT uses Radix UI for its dropdown menus. Simple `.click()` calls are silently ignored. The fix uses `PointerEvent('pointerdown')` → `PointerEvent('pointerup')` → `MouseEvent('click')` sequence, which Radix UI responds to. This applies to both the model picker button and the menu items.
 
-3. **Claude unchanged:** No changes to the Claude handler.
+3. **Graceful failure:** The model-switching logic is wrapped in try/catch with null checks at every step. If OpenAI changes their DOM and the selectors break, the extension silently proceeds with whatever model was active — no errors, no interruption.
 
-4. **New selectors documented:** Added ChatGPT model picker button and Auto option to the selector table.
+4. **Claude unchanged:** No changes to the Claude handler.
+
+5. **New selectors documented:** Added ChatGPT model picker button and Auto option to the selector table.
+
+6. **Versioning rule added:** Added rule to `.claude/CLAUDE.md` that the extension version in `manifest.json` must be bumped every session.
+
+7. **Tested and confirmed working** by Matias.
 
 ## Known Issues / Potential Future Work
 

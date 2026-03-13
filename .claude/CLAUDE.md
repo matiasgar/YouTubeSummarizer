@@ -25,6 +25,10 @@ Chrome extension that extracts YouTube video transcripts and sends them to ChatG
 
 This extension depends on CSS selectors for YouTube, ChatGPT, and Claude's page structures. These change without notice. If the extension breaks, the first thing to check is whether the selectors in `content.js` still match the live DOM. The session primer has a table of all selectors with their last-verified dates.
 
+## Versioning
+
+- **Bump the version in `extension/manifest.json` every session.** Even if the changes are small, the version must increase so Matias can confirm the updated code is loaded in Chrome.
+
 ## Testing
 
 To test changes, the extension must be reloaded in Chrome:
