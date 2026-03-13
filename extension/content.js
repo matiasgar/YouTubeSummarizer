@@ -52,7 +52,7 @@
                             font-size: 14px;
                             line-height: 1.5;
                         ">
-                            Sending video to ChatGPT
+                            Extracting transcript...
                         </div>
                     </div>
     
@@ -157,12 +157,24 @@
     Transcript:
     ${transcript}`;
 
-            // Check transcript length
-            const CHAR_LIMIT = 32000; // Conservative limit for ChatGPT
+            // Check transcript length to decide ChatGPT vs Claude routing.
+            // ChatGPT Plus has a 32K token limit (~128K chars). 60K chars (~15K tokens)
+            // gives plenty of headroom for the prompt template, system instructions,
+            // and less efficient tokenization of non-English text.
+            // Claude handles 200K tokens on all plans, so it easily takes the overflow.
+            const CHAR_LIMIT = 60000;
             const useClaudeInstead = transcript.length > CHAR_LIMIT;
 
             await chrome.storage.local.set({ 'youtube_summary_prompt': prompt });
             console.log('Stored prompt in chrome.storage.');
+
+            // Update notification to show which AI service will be used
+            const notificationText = notificationContainer.querySelector('.notification-text');
+            if (notificationText) {
+                notificationText.textContent = useClaudeInstead
+                    ? 'Sending video to Claude'
+                    : 'Sending video to ChatGPT';
+            }
 
             if (useClaudeInstead) {
                 // Cleanup notification state
