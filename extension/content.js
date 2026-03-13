@@ -264,6 +264,7 @@
 
             // Try to disable extended thinking/reasoning models (Thinking, Pro)
             // by switching to Auto. Fails gracefully if selectors change.
+            // Note: ChatGPT uses Radix UI which requires PointerEvents, not .click()
             try {
                 const modelButton = document.querySelector('button[data-testid="model-switcher-dropdown-button"]');
                 if (modelButton) {
@@ -271,16 +272,21 @@
                     const currentModel = ariaLabel.toLowerCase();
                     if (currentModel.includes('thinking') || currentModel.includes('pro')) {
                         console.log('Extended thinking model detected, switching to Auto...');
-                        modelButton.click();
+                        // Radix UI dropdowns need pointer events to open
+                        modelButton.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+                        modelButton.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+                        modelButton.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                         await new Promise(resolve => setTimeout(resolve, 500));
                         const autoOption = document.querySelector('[data-testid="model-switcher-gpt-5-3"]');
                         if (autoOption) {
-                            autoOption.click();
+                            autoOption.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+                            autoOption.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+                            autoOption.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
                             console.log('Switched to Auto model.');
                             await new Promise(resolve => setTimeout(resolve, 500));
                         } else {
                             // Close the menu if we couldn't find Auto
-                            document.body.click();
+                            document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
                             console.log('Could not find Auto option, proceeding with current model.');
                         }
                     }
