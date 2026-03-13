@@ -1,5 +1,5 @@
 /**
- * Content script for Easy YouTube Summary extension
+ * Content script for YouTube Summarizer extension
  * Features:
  * - Extraction of video script from YouTube page
  * - Automatic summarization chatbot selection based on transcript length
@@ -45,7 +45,7 @@
                             font-weight: 600;
                             margin-bottom: 8px;
                         ">
-                            Easy YouTube Summarizer says:
+                            YouTube Summarizer says:
                         </div>
                         <div class="notification-text" style="
                             color: #FFFFFF;
@@ -242,7 +242,7 @@
                                 font-weight: 600;
                                 margin-bottom: 8px;
                             ">
-                                Easy YouTube Summarizer says:
+                                YouTube Summarizer says:
                             </div>
                             <div class="notification-text" style="
                                 color: #FFFFFF;
@@ -411,7 +411,7 @@
                                 font-weight: 600;
                                 margin-bottom: 16px;
                             ">
-                                Easy YouTube Summarizer says:
+                                YouTube Summarizer says:
                             </div>
                             <div style="
                                 color: #FFFFFF;
@@ -563,7 +563,7 @@
                     font-weight: 600;
                     margin-bottom: 16px;
                 ">
-                    Easy YouTube Summarizer says:
+                    YouTube Summarizer says:
                 </div>
                 <div style="
                     color: #FFFFFF;

@@ -1,5 +1,5 @@
 /**
- * Background script for Easy YouTube Summary extension
+ * Background script for YouTube Summarizer extension
  * Handles tab management and messaging between content scripts
  */
 

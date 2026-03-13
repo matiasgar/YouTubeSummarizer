@@ -1,4 +1,4 @@
-# VideoSummarizer — Project Rules for Claude
+# YouTubeSummarizer — Project Rules for Claude
 
 ## Session Start
 
@@ -6,7 +6,7 @@ At the beginning of each new session, read `context/session-primer.md` for the c
 
 ## Git & Deployment
 
-- **Single repo:** Everything lives in one git repo (`matiasgar/VideoSummarizer`).
+- **Single repo:** Everything lives in one git repo (`matiasgar/YouTubeSummarizer`).
 - **Working branch:** `dev`. All commits go here. Push to `dev` freely.
 - **Production branch:** `master`. NEVER push directly to `master`.
 - **No hosting platform** — this is a Chrome extension loaded locally via chrome://extensions.
@@ -29,6 +29,6 @@ This extension depends on CSS selectors for YouTube, ChatGPT, and Claude's page 
 
 To test changes, the extension must be reloaded in Chrome:
 1. Go to `chrome://extensions/`
-2. Find "Easy YouTube Summary" and click the refresh icon
+2. Find "YouTube Summarizer" and click the refresh icon
 3. Navigate to a YouTube video with a transcript and click the extension icon
 4. Verify transcript extraction, AI tab opening, and prompt injection all work

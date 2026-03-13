@@ -1,4 +1,4 @@
-# Session Primer — VideoSummarizer
+# Session Primer — YouTubeSummarizer
 
 > **Purpose:** This file is the single source of "what a fresh Claude session needs to know." It gets updated at the end of every session. Read this before starting any task.
 
@@ -6,7 +6,7 @@
 
 ## What This Project Is
 
-"Easy YouTube Summary" — a Chrome extension (Manifest V3) that extracts YouTube video transcripts and sends them to ChatGPT or Claude for AI-powered summarization. The user clicks the extension icon while on a YouTube video page, the transcript is extracted from the page DOM, a detailed summarization prompt is built, and it's automatically injected into an AI chat interface in a new tab.
+"YouTube Summarizer" — a Chrome extension (Manifest V3) that extracts YouTube video transcripts and sends them to ChatGPT or Claude for AI-powered summarization. The user clicks the extension icon while on a YouTube video page, the transcript is extracted from the page DOM, a detailed summarization prompt is built, and it's automatically injected into an AI chat interface in a new tab.
 
 ## Architecture at a Glance
 
@@ -15,7 +15,7 @@
 | Extension | Chrome Manifest V3 extension | `extension/` |
 | Files | manifest.json, background.js, content.js, icons/ | `extension/` |
 | Context | Session primer, project docs | `context/` |
-| Repo | github.com/matiasgar/VideoSummarizer (**public**) | remote |
+| Repo | github.com/matiasgar/YouTubeSummarizer (**public**) | remote |
 | No backend, no frontend, no hosting | Pure Chrome extension, loaded locally via chrome://extensions | — |
 
 ## How the Extension Works (Detailed Flow)
@@ -89,7 +89,7 @@ The code in this repo was imported from iteration #3 (the most feature-complete)
 - **Version:** 1.1
 - **Git branch:** Working on `dev`, both `dev` and `master` pushed to remote
 - **Status:** Extension is working. Tested by Matias on 2026-03-13 and confirmed functional.
-- **Repo visibility:** Public (https://github.com/matiasgar/VideoSummarizer)
+- **Repo visibility:** Public (https://github.com/matiasgar/YouTubeSummarizer)
 
 ## What Was Done in Session 0 (2026-03-13)
 
@@ -104,7 +104,7 @@ This was the project setup and first bug fix session:
 
 2. **Code import** — Copied the latest extension code from `~/Documents/CODE3/easy-youtube-summary/` into `extension/`
 
-3. **Git + GitHub setup** — Initialized repo, created `dev` and `master` branches, created private GitHub repo at `matiasgar/VideoSummarizer`, pushed both branches. Later made repo public at Matias's request.
+3. **Git + GitHub setup** — Initialized repo, created `dev` and `master` branches, created private GitHub repo at `matiasgar/YouTubeSummarizer`, pushed both branches. Later made repo public at Matias's request.
 
 4. **Diagnosed the broken transcript extraction** — Used browser automation to inspect a live YouTube page. Found that:
    - YouTube replaced `ytd-transcript-segment-renderer` elements with new `transcript-segment-view-model` custom elements
