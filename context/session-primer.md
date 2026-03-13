@@ -72,6 +72,8 @@ These are the selectors that are most likely to break when YouTube/ChatGPT/Claud
 | YouTube video title | `yt-formatted-string.style-scope.ytd-watch-metadata[force-default-style]` | 2026-03-13 |
 | ChatGPT input | `div[contenteditable="true"]` | 2026-03-13 |
 | ChatGPT send button | `button[data-testid="send-button"]` | 2026-03-13 |
+| ChatGPT model picker button | `button[data-testid="model-switcher-dropdown-button"]` | 2026-03-13 |
+| ChatGPT Auto model option | `[data-testid="model-switcher-gpt-5-3"]` | 2026-03-13 |
 | Claude input | `div[role="textbox"]` / `.ProseMirror` | 2026-03-13 |
 | Claude send button | `button[aria-label="Send message"]` (lowercase m) | 2026-03-13 |
 
@@ -84,11 +86,11 @@ This extension was originally developed by Matias across three iterations:
 
 The code in this repo was imported from iteration #3 (the most feature-complete) and then fixed in Session 0.
 
-## Current State (last updated: 2026-03-13, end of Session 1)
+## Current State (last updated: 2026-03-13, end of Session 2)
 
 - **Version:** 1.2
 - **Git branch:** Working on `dev`, pushed to remote. `master` has not been updated since Session 0.
-- **Status:** Extension changes made but not yet tested by Matias (routing threshold change, notification fix, rename).
+- **Status:** Session 2 changes (auto-disable thinking on ChatGPT) need testing by Matias.
 - **Repo visibility:** Public (https://github.com/matiasgar/YouTubeSummarizer)
 
 ## What Was Done in Session 0 (2026-03-13)
@@ -148,6 +150,16 @@ This session focused on research, routing logic update, notification fix, and fu
 5. **Bumped version** to 1.2
 
 6. **Not yet tested** — Matias needs to reload the extension in Chrome and verify all changes work.
+
+## What Was Done in Session 2 (2026-03-13)
+
+1. **Auto-disable extended thinking on ChatGPT:** When the extension opens ChatGPT, it now checks the model picker. If "Thinking" or "Pro" mode is active, it automatically switches to "Auto" before injecting the prompt. This ensures fast responses without reasoning overhead.
+
+2. **Graceful failure:** The model-switching logic is wrapped in try/catch with null checks at every step. If OpenAI changes their DOM and the selectors break, the extension silently proceeds with whatever model was active — no errors, no interruption.
+
+3. **Claude unchanged:** No changes to the Claude handler.
+
+4. **New selectors documented:** Added ChatGPT model picker button and Auto option to the selector table.
 
 ## Known Issues / Potential Future Work
 

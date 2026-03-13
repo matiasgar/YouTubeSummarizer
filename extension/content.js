@@ -262,6 +262,33 @@
             await chrome.storage.local.remove('opening_chatgpt');
             await new Promise(resolve => setTimeout(resolve, 3000));
 
+            // Try to disable extended thinking/reasoning models (Thinking, Pro)
+            // by switching to Auto. Fails gracefully if selectors change.
+            try {
+                const modelButton = document.querySelector('button[data-testid="model-switcher-dropdown-button"]');
+                if (modelButton) {
+                    const ariaLabel = modelButton.getAttribute('aria-label') || '';
+                    const currentModel = ariaLabel.toLowerCase();
+                    if (currentModel.includes('thinking') || currentModel.includes('pro')) {
+                        console.log('Extended thinking model detected, switching to Auto...');
+                        modelButton.click();
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        const autoOption = document.querySelector('[data-testid="model-switcher-gpt-5-3"]');
+                        if (autoOption) {
+                            autoOption.click();
+                            console.log('Switched to Auto model.');
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        } else {
+                            // Close the menu if we couldn't find Auto
+                            document.body.click();
+                            console.log('Could not find Auto option, proceeding with current model.');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('Model switch failed (selectors may have changed), proceeding:', e.message);
+            }
+
             const data = await chrome.storage.local.get('youtube_summary_prompt');
             const prompt = data.youtube_summary_prompt;
             console.log('Retrieved prompt:', prompt);
