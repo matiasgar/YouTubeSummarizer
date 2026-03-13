@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Editor files
+*.swp
+*~
+
+# Claude Code internal state
+.claude/settings.local.json
+
+# Environment files
+.env
+.env.local
+
+# Chrome extension packaging
+*.crx
+*.pem
+*.zip
