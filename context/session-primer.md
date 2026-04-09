@@ -21,14 +21,13 @@
 ## How the Extension Works (Detailed Flow)
 
 ### Trigger
-User navigates to a YouTube watch page and clicks the extension icon in the Chrome toolbar.
+User navigates to any web page and clicks the extension icon in the Chrome toolbar.
 
 ### Step 1: background.js
 - Listens for `chrome.action.onClicked`
-- Checks if the current tab URL includes `youtube.com/watch`
-- If yes, injects `content.js` into the YouTube tab via `chrome.scripting.executeScript`
+- Injects `content.js` into the current tab via `chrome.scripting.executeScript` (any page, not just YouTube)
 
-### Step 2: content.js — Section 1 (YouTube Page Handler)
+### Step 2a: content.js — Section 1 (YouTube Page Handler)
 - Shows a pink notification banner ("Extracting transcript...", then updates to show which AI service will be used)
 - Waits 2 seconds for page to fully load
 - Finds and clicks the `button[aria-label="Show transcript"]` button
@@ -40,6 +39,22 @@ User navigates to a YouTube watch page and clicks the extension icon in the Chro
 - Builds a detailed summarization prompt with 3 sections: MAIN TAKE, SUMMARY, FRESH IDEAS
 - Stores the prompt in `chrome.storage.local`
 - **Routing logic:** If transcript < 60,000 chars → opens ChatGPT; if longer → opens Claude (Claude has a larger context window). The 60K char threshold (~15K tokens) is conservative — well within ChatGPT Plus's 32K token limit with headroom for the prompt template and non-English tokenization.
+
+### Step 2b: content.js — Section 1b (Web Page Handler)
+- Runs on any page that is NOT YouTube, ChatGPT, or Claude
+- Shows a pink notification banner ("Extracting page text...")
+- Extracts visible text using smart content detection:
+  - First tries `<article>` element (most blog posts/news sites use this)
+  - Falls back to `<main>` element
+  - Falls back to `document.body.innerText` (full page text)
+- Gets the page title from `document.title` and URL from `window.location.href`
+- Minimum 50-character check to avoid empty/trivial pages
+- Builds an article-adapted summarization prompt with the same 3-section structure (MAIN TAKE, SUMMARY, FRESH IDEAS) but with article/author language instead of video/speaker
+- Adds a noise-filtering instruction to the prompt:
+  - Stronger warning when using full body fallback ("ignore navigation, sidebars, footers...")
+  - Lighter note when using `<article>`/`<main>` extraction
+- Same routing logic: < 60K chars → ChatGPT, longer → Claude
+- Stores the prompt in `chrome.storage.local` and opens the AI tab
 
 ### Step 3: content.js — Section 2 (ChatGPT Handler)
 - Runs on `chat.openai.com` and `chatgpt.com` pages
@@ -86,11 +101,11 @@ This extension was originally developed by Matias across three iterations:
 
 The code in this repo was imported from iteration #3 (the most feature-complete) and then fixed in Session 0.
 
-## Current State (last updated: 2026-03-13, end of Session 2)
+## Current State (last updated: 2026-04-09, end of Session 3)
 
-- **Version:** 1.2
+- **Version:** 1.3
 - **Git branch:** Working on `dev`, pushed to remote. `master` has not been updated since Session 0.
-- **Status:** All Session 2 changes tested and working. Extension auto-disables extended thinking on ChatGPT.
+- **Status:** All Session 3 changes tested and working. Extension now supports summarizing any web page in addition to YouTube videos.
 - **Repo visibility:** Public (https://github.com/matiasgar/YouTubeSummarizer)
 
 ## What Was Done in Session 0 (2026-03-13)
@@ -166,6 +181,28 @@ This session focused on research, routing logic update, notification fix, and fu
 6. **Versioning rule added:** Added rule to `.claude/CLAUDE.md` that the extension version in `manifest.json` must be bumped every session.
 
 7. **Tested and confirmed working** by Matias.
+
+## What Was Done in Session 3 (2026-04-09)
+
+This session added web page summarization support — the extension now works on any page, not just YouTube.
+
+1. **Web page summarization:** Clicking the extension icon on any non-YouTube page now extracts the visible text and sends it to ChatGPT/Claude for summarization using the same routing and injection pipeline.
+
+2. **Smart content extraction:** The extension tries `<article>` first, then `<main>`, and falls back to `document.body.innerText`. This produces cleaner input on sites that use semantic HTML (most blogs and news sites).
+
+3. **Noise-filtering prompt instruction:** The prompt tells the AI model to focus on the main content and ignore navigation, sidebars, footers, etc. The instruction is stronger when using the full-body fallback.
+
+4. **Article-adapted prompt:** Same 3-section structure (MAIN TAKE, SUMMARY, FRESH IDEAS) but with "page/author" language instead of "video/speaker".
+
+5. **Generic notification text:** Updated all modal/notification text to say "content" instead of "video" where the message applies to both YouTube and web pages. YouTube-specific notifications (e.g., "Sending video to ChatGPT") remain unchanged since they only appear on YouTube pages.
+
+6. **Updated toolbar tooltip:** Changed from "Get Video Summary" to "Summarize this page".
+
+7. **background.js simplified:** Removed the YouTube-only URL check — `content.js` is now injected on any page and decides internally how to handle it.
+
+8. **Bumped version** to 1.3.
+
+9. **Tested and confirmed working** by Matias on a web page.
 
 ## Known Issues / Potential Future Work
 
