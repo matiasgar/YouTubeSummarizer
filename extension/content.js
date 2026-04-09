@@ -284,8 +284,13 @@
                 }
             });
 
-            // Extract visible page text
-            const pageText = document.body.innerText;
+            // Extract page text — prefer <article> or <main> for cleaner content,
+            // fall back to full body text if neither exists
+            const articleEl = document.querySelector('article');
+            const mainEl = document.querySelector('main');
+            const contentSource = articleEl || mainEl || document.body;
+            const pageText = contentSource.innerText;
+            const usedFallback = contentSource === document.body;
             const pageTitle = document.title;
             const pageUrl = window.location.href;
 
@@ -298,7 +303,11 @@
 
             console.log('Extracted page text length:', pageText.length);
 
-            const prompt = `Below is the text content of a web page titled "${pageTitle}" (${pageUrl}).
+            const noiseNote = usedFallback
+                ? `\n\nIMPORTANT: This text was extracted from the full page, so it may include navigation menus, sidebars, footers, cookie notices, comment sections, or other UI elements. Focus ONLY on the main article/content and completely ignore any unrelated text fragments.`
+                : `\n\nNote: This text was extracted from the main content area, but it may still contain minor peripheral elements. Focus on the core article content.`;
+
+            const prompt = `Below is the text content of a web page titled "${pageTitle}" (${pageUrl}).${noiseNote}
 
 Please provide an overview of this content (if the text is not in English use the text's language, not English) using the following structure:
 
