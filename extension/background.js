@@ -5,12 +5,12 @@
 
 
 chrome.action.onClicked.addListener((tab) => {
-    if (tab.url.includes("youtube.com/watch")) {
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['content.js']
-        });
-    }
+    // Inject content.js on any page — content.js decides whether to handle
+    // it as a YouTube video or a generic web page
+    chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+    });
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

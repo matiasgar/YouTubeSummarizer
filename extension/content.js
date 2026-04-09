@@ -1,8 +1,9 @@
 /**
  * Content script for YouTube Summarizer extension
  * Features:
- * - Extraction of video script from YouTube page
- * - Automatic summarization chatbot selection based on transcript length
+ * - Extraction of video transcript from YouTube page
+ * - Extraction of visible text from any web page (articles, blog posts, etc.)
+ * - Automatic summarization chatbot selection based on text length
  */
 (function () {
 
@@ -199,6 +200,161 @@
         }
 
         getTranscriptAndSummarize();
+    }
+
+    //=============================================================================
+    // Section 1b: Web Page Handler
+    // Handles non-YouTube pages: extracts visible text and sends for summarization
+    //=============================================================================
+
+    if (!window.location.href.includes('youtube.com/watch') &&
+        window.location.hostname !== 'chat.openai.com' &&
+        window.location.hostname !== 'chatgpt.com' &&
+        window.location.hostname !== 'claude.ai') {
+
+        async function getPageTextAndSummarize() {
+            console.log('Running getPageTextAndSummarize()...');
+
+            // Create and store unique notification ID
+            const notificationId = 'notification-' + Date.now();
+            await chrome.storage.local.set({
+                'notification_active': true,
+                'notification_id': notificationId,
+                'source_notification_active': true
+            });
+
+            // Show centered notification
+            const notificationHTML = `
+                    <div id="${notificationId}" class="youtube-summary-notification" style="
+                        position: fixed;
+                        top: 20px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background:rgb(255, 107, 240);
+                        padding: 16px 24px;
+                        border-radius: 8px;
+                        z-index: 10000;
+                        max-width: 300px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        font-family: system-ui, -apple-system, sans-serif;
+                        animation: slideIn 0.5s ease-out;
+                    ">
+                        <div style="
+                            color: #FFFFFF;
+                            font-size: 16px;
+                            font-weight: 600;
+                            margin-bottom: 8px;
+                        ">
+                            YouTube Summarizer says:
+                        </div>
+                        <div class="notification-text" style="
+                            color: #FFFFFF;
+                            font-size: 14px;
+                            line-height: 1.5;
+                        ">
+                            Extracting page text...
+                        </div>
+                    </div>
+
+                    <style>
+                        @keyframes slideIn {
+                            from {
+                                transform: translate(-50%, -100%);
+                                opacity: 0;
+                            }
+                            to {
+                                transform: translate(-50%, 0);
+                                opacity: 1;
+                            }
+                        }
+                    </style>
+                `;
+
+            const notificationContainer = document.createElement('div');
+            notificationContainer.innerHTML = notificationHTML;
+            document.body.appendChild(notificationContainer);
+
+            // Remove notification when tab loses focus
+            window.addEventListener('blur', async () => {
+                const notifActive = await chrome.storage.local.get('source_notification_active');
+                if (notifActive.source_notification_active) {
+                    await chrome.storage.local.remove('source_notification_active');
+                    const notification = document.querySelector('.youtube-summary-notification');
+                    if (notification) notification.remove();
+                }
+            });
+
+            // Extract visible page text
+            const pageText = document.body.innerText;
+            const pageTitle = document.title;
+            const pageUrl = window.location.href;
+
+            if (!pageText || pageText.trim().length < 50) {
+                alert('Could not extract meaningful text from this page.');
+                await chrome.storage.local.remove(['notification_active', 'notification_id', 'source_notification_active']);
+                notificationContainer.remove();
+                return;
+            }
+
+            console.log('Extracted page text length:', pageText.length);
+
+            const prompt = `Below is the text content of a web page titled "${pageTitle}" (${pageUrl}).
+
+Please provide an overview of this content (if the text is not in English use the text's language, not English) using the following structure:
+
+# ${pageTitle}
+
+# 1. MAIN TAKE:
+[A single, clear sentence capturing the main thesis, argument, or insight of this page. Only use 2 sentences if it is impossible to summarize the main take in a single sentence.]
+
+# 2. SUMMARY:
+[Exhaustive bullet list of every main element, argument, or idea discussed on this page.
+- If the title or content indicates a numeric structure (e.g., "5 Tips for...", "Top 10..."), group the bullets under the corresponding parts or items.
+- However, if a bullet doesn't fit under one of those groupings, don't include it under a grouping and list it separately before or after.
+- Before moving to the next section, double-check to ensure that you've indeed included an exhaustive list of all the main elements/arguments/ideas discussed on this page]
+
+# 3. FRESH IDEAS:
+State 'Nothing fresh! 🧐' if the content doesn't include groundbreaking ideas or fresh insights. However, DO include ideas that feel groundbreaking OR offer a distinct reframing or perspective on a well-known idea, provided it adds clarity, nuance, or deeper understanding.
+- If you include any items here, clearly justify in 1-2 sentences why each listed idea feels fresh.
+- Exceptionally, well-known views or facts can be included if they are explained in a way that offers fresh clarity or perspective.
+- IMPORTANT: It's better to say "Nothing fresh! 🧐" than to force items into this section if none genuinely stand out.]
+
+Page text:
+${pageText}`;
+
+            const CHAR_LIMIT = 60000;
+            const useClaudeInstead = pageText.length > CHAR_LIMIT;
+
+            await chrome.storage.local.set({ 'youtube_summary_prompt': prompt });
+            console.log('Stored prompt in chrome.storage.');
+
+            // Update notification to show which AI service will be used
+            const notificationText = notificationContainer.querySelector('.notification-text');
+            if (notificationText) {
+                notificationText.textContent = useClaudeInstead
+                    ? 'Sending page to Claude'
+                    : 'Sending page to ChatGPT';
+            }
+
+            if (useClaudeInstead) {
+                await chrome.storage.local.remove(['notification_active', 'notification_id', 'source_notification_active']);
+                await chrome.storage.local.set({ 'opening_claude': true });
+                const claudeWindow = window.open('https://claude.ai/chats', '_blank');
+                if (claudeWindow) {
+                    claudeWindow.focus();
+                }
+                console.log('Page text too long for ChatGPT, opened Claude instead.');
+            } else {
+                await chrome.storage.local.set({ 'opening_chatgpt': true });
+                const chatGPTWindow = window.open('https://chat.openai.com/', '_blank');
+                if (chatGPTWindow) {
+                    chatGPTWindow.focus();
+                }
+                console.log('Opened ChatGPT in a new tab.');
+            }
+        }
+
+        getPageTextAndSummarize();
     }
 
     //=============================================================================
@@ -452,7 +608,7 @@
                                 line-height: 1.5;
                                 margin-bottom: 20px;
                             ">
-                                The video was too long for ChatGPT to summarize, and we tried to use Claude instead. <br><br>However, it looks like you're not logged into Claude. Please log into Claude and try using our summarize extension again.
+                                The content was too long for ChatGPT to summarize, and we tried to use Claude instead. <br><br>However, it looks like you're not logged into Claude. Please log into Claude and try using our extension again.
                             </div>
                             <button id="login-alert-ok" style="
                                 background: #FFFFFF;
@@ -604,7 +760,7 @@
                     line-height: 1.5;
                     margin-bottom: 20px;
                 ">
-                    The video is too long for the current limits of ${botName}.
+                    The content is too long for the current limits of ${botName}.
                 </div>
                 <button id="too-long-alert-ok" style="
                     background: #FFFFFF;
