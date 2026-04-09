@@ -405,7 +405,7 @@ ${pageText}`;
                                 font-size: 14px;
                                 line-height: 1.5;
                             ">
-                                Requesting ChatGPT to summarize video
+                                Requesting ChatGPT to summarize content
                             </div>
                         </div>
                     `;
