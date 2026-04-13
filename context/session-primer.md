@@ -101,11 +101,11 @@ This extension was originally developed by Matias across three iterations:
 
 The code in this repo was imported from iteration #3 (the most feature-complete) and then fixed in Session 0.
 
-## Current State (last updated: 2026-04-09, end of Session 3)
+## Current State (last updated: 2026-04-11, end of Session 4)
 
-- **Version:** 1.3
+- **Version:** 1.4
 - **Git branch:** Working on `dev`, pushed to remote. `master` has not been updated since Session 0.
-- **Status:** All Session 3 changes tested and working. Extension now supports summarizing any web page in addition to YouTube videos.
+- **Status:** All Session 4 changes tested and working. SUMMARY section now uses ## subheadings for structured content.
 - **Repo visibility:** Public (https://github.com/matiasgar/YouTubeSummarizer)
 
 ## What Was Done in Session 0 (2026-03-13)
@@ -203,6 +203,18 @@ This session added web page summarization support — the extension now works on
 8. **Bumped version** to 1.3.
 
 9. **Tested and confirmed working** by Matias on a web page.
+
+## What Was Done in Session 4 (2026-04-11)
+
+This session improved the SUMMARY section of both prompts to use subheadings.
+
+1. **Subheading structure in SUMMARY:** Both YouTube and web page prompts now instruct the AI to organize the summary under `##` subheadings whenever the content has distinct topics, sections, or groupings. Numeric-titled content (e.g. "Top 10…") uses each item as its own subheading. Short single-thread content falls back to a flat bullet list.
+
+2. **Removed "exhaustive" wording** from both prompts at Matias's request.
+
+3. **Bumped version** to 1.4.
+
+4. **Tested and confirmed working** by Matias.
 
 ## Known Issues / Potential Future Work
 
