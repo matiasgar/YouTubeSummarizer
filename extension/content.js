@@ -144,10 +144,13 @@
     [A single, clear sentence capturing the main thesis, insight, or idea in the video. Only use 2 sentences if it is impossible to summarize the main take in a single sentence.]
     
     # 2. SUMMARY:
-    [Exhaustive bullet list of every main element, event, or idea discussed in the video.
-    - If the title indicates a numeric structure (e.g., "3 Reasons Why Mac Is Better than PC," "Top 10 Luxury Hotels in London"), group the bullets under the corresponding parts or items.
-    - However, if a bullet doesn't fit under one of those groupings, don't include it under a grouping and list it separately before or after. 
-    - Before moving to the next section, double-check to ensure that you've indeed included an exhaustive list of all the main elements/events/ideas discussed in the video]
+    [Overview of every main element, event, or idea discussed in the video.
+    - Organize the summary under ## subheadings whenever the content has distinct topics, sections, or groupings. Choose heading names that reflect the actual content.
+    - If the title indicates a numeric structure (e.g., "3 Reasons Why Mac Is Better than PC," "Top 10 Luxury Hotels in London"), use each item as its own ## subheading.
+    - Under each subheading, use bullet points to capture the specific elements, events, or ideas.
+    - If a bullet doesn't fit under any subheading, list it under a final ## Other subheading or before the first subheading.
+    - Only skip subheadings entirely if the video is short and genuinely covers a single continuous thread with no distinct sections — in that case, use a flat bullet list.
+    - Before moving to the next section, double-check to ensure that you've included all the main elements/events/ideas discussed in the video.]
     
     # 3. FRESH IDEAS:
     State 'Nothing fresh! 🧐' if the transcript doesn't include groundbreaking ideas or fresh insights. However, DO include ideas that feel groundbreaking OR offer a distinct reframing or perspective on a well-known idea, provided it adds clarity, nuance, or deeper understanding.
@@ -317,10 +320,13 @@ Please provide an overview of this content (if the text is not in English use th
 [A single, clear sentence capturing the main thesis, argument, or insight of this page. Only use 2 sentences if it is impossible to summarize the main take in a single sentence.]
 
 # 2. SUMMARY:
-[Exhaustive bullet list of every main element, argument, or idea discussed on this page.
-- If the title or content indicates a numeric structure (e.g., "5 Tips for...", "Top 10..."), group the bullets under the corresponding parts or items.
-- However, if a bullet doesn't fit under one of those groupings, don't include it under a grouping and list it separately before or after.
-- Before moving to the next section, double-check to ensure that you've indeed included an exhaustive list of all the main elements/arguments/ideas discussed on this page]
+[Overview of every main element, argument, or idea discussed on this page.
+- Organize the summary under ## subheadings whenever the content has distinct topics, sections, or groupings. Choose heading names that reflect the actual content.
+- If the title or content indicates a numeric structure (e.g., "5 Tips for...", "Top 10..."), use each item as its own ## subheading.
+- Under each subheading, use bullet points to capture the specific elements, arguments, or ideas.
+- If a bullet doesn't fit under any subheading, list it under a final ## Other subheading or before the first subheading.
+- Only skip subheadings entirely if the page is short and genuinely covers a single continuous argument with no distinct sections — in that case, use a flat bullet list.
+- Before moving to the next section, double-check to ensure that you've included all the main elements/arguments/ideas discussed on this page.]
 
 # 3. FRESH IDEAS:
 State 'Nothing fresh! 🧐' if the content doesn't include groundbreaking ideas or fresh insights. However, DO include ideas that feel groundbreaking OR offer a distinct reframing or perspective on a well-known idea, provided it adds clarity, nuance, or deeper understanding.
