@@ -82,9 +82,9 @@ These are the selectors that are most likely to break when YouTube/ChatGPT/Claud
 
 | What | Selector | Last verified |
 |------|----------|---------------|
-| YouTube transcript button | `button[aria-label="Show transcript"]` | 2026-03-13 |
-| YouTube transcript text | `transcript-segment-view-model span.yt-core-attributed-string` | 2026-03-13 |
-| YouTube video title | `yt-formatted-string.style-scope.ytd-watch-metadata[force-default-style]` | 2026-03-13 |
+| YouTube transcript button | `button[aria-label="Show transcript"]` (prefer visible variant) | 2026-04-14 |
+| YouTube transcript text | `transcript-segment-view-model span.ytAttributedStringHost` | 2026-04-14 |
+| YouTube video title | `yt-formatted-string.style-scope.ytd-watch-metadata[force-default-style]` (with `h1.ytd-watch-metadata` fallback) | 2026-04-14 |
 | ChatGPT input | `div[contenteditable="true"]` | 2026-03-13 |
 | ChatGPT send button | `button[data-testid="send-button"]` | 2026-03-13 |
 | ChatGPT model picker button | `button[data-testid="model-switcher-dropdown-button"]` | 2026-03-13 |
@@ -101,11 +101,11 @@ This extension was originally developed by Matias across three iterations:
 
 The code in this repo was imported from iteration #3 (the most feature-complete) and then fixed in Session 0.
 
-## Current State (last updated: 2026-04-11, end of Session 4)
+## Current State (last updated: 2026-04-14, end of Session 5)
 
-- **Version:** 1.4
+- **Version:** 1.5
 - **Git branch:** Working on `dev`, pushed to remote. `master` has not been updated since Session 0.
-- **Status:** All Session 4 changes tested and working. SUMMARY section now uses ## subheadings for structured content.
+- **Status:** Session 5 fixed the broken YouTube transcript extraction. Verified working on a music video (lyrics) and a spoken-transcript video via Claude-in-Chrome.
 - **Repo visibility:** Public (https://github.com/matiasgar/YouTubeSummarizer)
 
 ## What Was Done in Session 0 (2026-03-13)
@@ -203,6 +203,35 @@ This session added web page summarization support — the extension now works on
 8. **Bumped version** to 1.3.
 
 9. **Tested and confirmed working** by Matias on a web page.
+
+## What Was Done in Session 5 (2026-04-14)
+
+This session fixed a YouTube DOM change that broke transcript extraction.
+
+1. **Root cause diagnosed via Claude-in-Chrome on a live YouTube page:** YouTube renamed the CSS class on the `<span>` that wraps transcript segment text inside `transcript-segment-view-model` custom elements:
+   - **Old class:** `yt-core-attributed-string` (Session 0 fix)
+   - **New class:** `ytAttributedStringHost` (plus `ytAttributedStringLinkInheritColor` as a secondary class)
+   - The outer `transcript-segment-view-model` element name is unchanged.
+   - Result: the Session 0 selector `transcript-segment-view-model span.yt-core-attributed-string` now matches 0 elements on every video, so extraction silently fails and the "Could not extract transcript" path fires.
+
+2. **Fix applied to `content.js`:**
+   - **New primary selector:** `transcript-segment-view-model span.ytAttributedStringHost`
+   - **Fallback chain:** old new-layout class (`span.yt-core-attributed-string`), then the pre-2026 class (`.segment-text.style-scope.ytd-transcript-segment-renderer`). Polling and the 10-second max wait are unchanged.
+   - **Robuster "Show transcript" button click:** YouTube renders several `button[aria-label="Show transcript"]` copies (description, menus, engagement panel); some are hidden depending on layout state. The extension now picks the first VISIBLE one and falls back to the first DOM match if none are visible. The extension also attempts to click the description expander first (`#description-inline-expander #expand`) because the button often lives inside the collapsed description.
+   - **Video title fallback:** Kept the existing selector as primary and added `h1.ytd-watch-metadata yt-formatted-string` → `h1.ytd-watch-metadata` → `document.title` fallbacks.
+
+3. **Tested via Claude-in-Chrome:**
+   - Rick Astley "Never Gonna Give You Up" (music video with description lyrics): 24 segments, 2089 chars, clean lyrics text (no timestamp noise).
+   - "Me at the zoo" (oldest YouTube video, real spoken transcript): 3 segments, 217 chars, clean spoken text.
+   - Title extraction verified on both.
+
+4. **Non-obvious things learned during diagnosis:**
+   - YouTube also rolled out a "modern transcript view" engagement panel (`target-id="PAmodern_transcript_view"`) with `Chapters` / `Transcript` chip tabs and a `Copy Transcript` button. This panel does not use `transcript-segment-view-model` custom elements and remained stuck on a spinner in automated sessions. The legacy `transcript-segment-view-model` path still works on real videos once the click lands correctly, so we stayed on that path.
+   - `window.ytInitialPlayerResponse.captions.playerCaptionsTracklistRenderer.captionTracks` still exists and contains signed `baseUrl`s to timedtext — but fetching them returns `200` with a 0-byte body, and `/youtubei/v1/get_transcript` returns 400 FAILED_PRECONDITION when called from the content script. Neither API route is currently viable as a fallback; DOM scraping remains the only working extraction method.
+
+5. **Bumped version** to 1.5.
+
+6. **Not yet tested in Matias's real Chrome.** Matias needs to reload the extension and run it against a couple of YouTube videos (especially a regular spoken-transcript one) to confirm end-to-end flow. The Claude-in-Chrome tests confirm the selectors match real YouTube DOM, but the real extension-injection pipeline (background.js → content.js → ChatGPT/Claude tab) still needs manual verification.
 
 ## What Was Done in Session 4 (2026-04-11)
 

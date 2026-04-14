@@ -89,8 +89,26 @@
             await new Promise(resolve => setTimeout(resolve, 2000));
             console.log('Waited for 2 seconds.');
 
-            const transcriptButton = document.querySelector('button[aria-label="Show transcript"]');
-            console.log('Transcript button:', transcriptButton);
+            // The "Show transcript" button usually lives inside the video description,
+            // which is collapsed by default on many videos. Expand it so the button is
+            // actually reachable. Safe no-op if already expanded or expander missing.
+            try {
+                const descExpander = document.querySelector('#description-inline-expander[collapsed] #expand') ||
+                                     document.querySelector('ytd-text-inline-expander[collapsed] #expand') ||
+                                     document.querySelector('#description-inline-expander #expand');
+                if (descExpander) {
+                    descExpander.click();
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            } catch (e) {
+                console.log('Description expander click failed (non-fatal):', e.message);
+            }
+
+            // Prefer a VISIBLE "Show transcript" button — YouTube renders multiple copies
+            // (description, menu, etc.) and the first one in DOM order may be hidden.
+            const transcriptButtons = Array.from(document.querySelectorAll('button[aria-label="Show transcript"]'));
+            const transcriptButton = transcriptButtons.find(b => b.offsetParent !== null) || transcriptButtons[0];
+            console.log('Transcript button:', transcriptButton, '(visible variants:', transcriptButtons.filter(b => b.offsetParent !== null).length, '/', transcriptButtons.length, ')');
 
             if (!transcriptButton) {
                 alert('No transcript button found, or selector might be outdated.');
@@ -110,7 +128,12 @@
             while (waited < maxWaitMs) {
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 waited += pollInterval;
-                // New YouTube DOM: transcript-segment-view-model elements
+                // Current YouTube DOM (April 2026): transcript-segment-view-model elements
+                // whose clean text lives in a span.ytAttributedStringHost. YouTube renamed
+                // the class from yt-core-attributed-string → ytAttributedStringHost.
+                transcriptElements = document.querySelectorAll('transcript-segment-view-model span.ytAttributedStringHost');
+                if (transcriptElements.length > 0) break;
+                // Fallback: previous new-layout class name (March 2026)
                 transcriptElements = document.querySelectorAll('transcript-segment-view-model span.yt-core-attributed-string');
                 if (transcriptElements.length > 0) break;
                 // Fallback: old YouTube DOM (in case they revert)
@@ -132,7 +155,12 @@
 
             console.log('Extracted transcript:', transcript);
 
-            const videoTitle = document.querySelector('yt-formatted-string.style-scope.ytd-watch-metadata[force-default-style]').textContent;
+            // Video title — primary selector, with a simpler h1-based fallback if YouTube
+            // changes the yt-formatted-string markup.
+            const titleEl = document.querySelector('yt-formatted-string.style-scope.ytd-watch-metadata[force-default-style]') ||
+                            document.querySelector('h1.ytd-watch-metadata yt-formatted-string') ||
+                            document.querySelector('h1.ytd-watch-metadata');
+            const videoTitle = (titleEl?.textContent || document.title.replace(/ - YouTube$/, '')).trim();
 
             const prompt = `Below is the transcript of a YouTube video titled "${videoTitle}." 
                  
