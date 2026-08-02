@@ -752,6 +752,101 @@ ${pageText}`;
 
     if (window.location.hostname === 'claude.ai') {
         console.log('1. Detected claude.ai hostname');
+
+        // Force Claude to its lightest configuration before sending: model
+        // Haiku 4.5 with the "Extended" deep-reasoning toggle OFF. The picker
+        // is model-dependent (Aug 2026): Fable/Opus/Sonnet expose an Effort
+        // submenu (Low…Max), while Haiku exposes an "Extended" on/off item.
+        // Claude's submenus open on CLICK (not hover, unlike ChatGPT's).
+        async function forceClaudeLightestMode() {
+            const TAG = '[ClaudeLightSwitch]';
+            const banner = instantSwitchBanner();
+            const say = (s) => { console.log(`${TAG} ${s}`); banner.log(s); };
+            const warn = (s) => { console.warn(`${TAG} ${s}`); banner.log('WARN: ' + s); };
+            try {
+                const found = await waitForDom(() => !!document.querySelector('[data-testid="model-selector-dropdown"]'), 15000);
+                const btn = document.querySelector('[data-testid="model-selector-dropdown"]');
+                if (!found || !btn) {
+                    warn('model selector not found — skipping');
+                    banner.fadeAfter(10000);
+                    return;
+                }
+                say(`current model = "${btn.textContent.trim()}"`);
+
+                const menuOpen = () => btn.getAttribute('aria-expanded') === 'true';
+                const openMenu = async () => {
+                    if (menuOpen()) return true;
+                    fire(btn);
+                    return waitForDom(() => menuOpen() && document.querySelectorAll('[role="menuitemradio"], [role="menuitem"]').length > 0, 5000);
+                };
+                const closeMenu = async () => {
+                    if (!menuOpen()) return;
+                    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                    await waitForDom(() => !menuOpen(), 2000);
+                };
+
+                // Step 1: model → Haiku (skip if already selected).
+                if (!/haiku/i.test(btn.textContent)) {
+                    if (!(await openMenu())) { warn('menu would not open'); return; }
+                    const haiku = Array.from(document.querySelectorAll('[role="menuitemradio"]'))
+                        .find(r => /haiku/i.test(r.textContent.trim()));
+                    if (haiku) {
+                        fire(haiku);
+                        await waitForDom(() => !menuOpen(), 4000);
+                        await waitForDom(() => /haiku/i.test(btn.textContent), 5000);
+                        say(`model now "${btn.textContent.trim()}"`);
+                        await new Promise(r => setTimeout(r, 300));
+                    } else {
+                        warn('Haiku option not found — keeping current model');
+                        await closeMenu();
+                    }
+                }
+
+                // Step 2: turn OFF Haiku's "Extended" deep-reasoning toggle
+                // (button text reads e.g. "Haiku 4.5 Extended" when it's on).
+                if (/haiku/i.test(btn.textContent) && /extended/i.test(btn.textContent)) {
+                    if (await openMenu()) {
+                        const ext = Array.from(document.querySelectorAll('[role="menuitem"]'))
+                            .find(el => /^extended/i.test(el.textContent.trim()));
+                        if (ext) {
+                            fire(ext);
+                            await waitForDom(() => !menuOpen(), 4000);
+                            await waitForDom(() => !/extended/i.test(btn.textContent), 5000);
+                            say(`extended off; model now "${btn.textContent.trim()}"`);
+                        } else {
+                            warn('Extended toggle not found');
+                            await closeMenu();
+                        }
+                    }
+                }
+
+                // Variant safety: if we're still on a non-Haiku model and it has
+                // an Effort submenu, at least set Effort → Low.
+                if (!/haiku/i.test(btn.textContent)) {
+                    if (await openMenu()) {
+                        const trig = document.querySelector('[data-testid="effort-menu-trigger"]');
+                        if (trig && !/low$/i.test(trig.textContent.trim())) {
+                            fire(trig);
+                            const lowVisible = () => Array.from(document.querySelectorAll('[role="menuitemradio"]')).some(r => /^low$/i.test(r.textContent.trim()));
+                            if (await waitForDom(lowVisible, 3000)) {
+                                const low = Array.from(document.querySelectorAll('[role="menuitemradio"]')).find(r => /^low$/i.test(r.textContent.trim()));
+                                fire(low);
+                                await waitForDom(() => !menuOpen(), 4000);
+                                say(`effort low; model now "${btn.textContent.trim()}"`);
+                            }
+                        }
+                    }
+                }
+
+                await closeMenu();
+                say(`done; model final = "${btn.textContent.trim()}"`);
+                banner.fadeAfter(8000);
+            } catch (err) {
+                console.error(`${TAG} error:`, err);
+                try { banner.log('ERROR: ' + (err?.message || String(err))); banner.fadeAfter(15000); } catch (_) { }
+            }
+        }
+
         async function handleClaude() {
             console.log('Running handleClaude()...');
 
@@ -877,6 +972,10 @@ ${pageText}`;
                 console.warn('focusSenderTab send failed:', e);
             }
             await waitForDom(() => document.visibilityState === 'visible', 3000);
+
+            // Switch Claude to its lightest model TO COMPLETION before touching
+            // the composer (focusing the composer would close the picker menu).
+            await forceClaudeLightestMode();
 
             const data = await chrome.storage.local.get('youtube_summary_prompt');
             const prompt = data.youtube_summary_prompt;
