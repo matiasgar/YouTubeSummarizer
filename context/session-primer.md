@@ -85,10 +85,10 @@ These are the selectors that are most likely to break when YouTube/ChatGPT/Claud
 | YouTube transcript button | `button[aria-label="Show transcript"]` (prefer visible variant) | 2026-04-14 |
 | YouTube transcript text | `transcript-segment-view-model span.ytAttributedStringHost` | 2026-04-14 |
 | YouTube video title | `yt-formatted-string.style-scope.ytd-watch-metadata[force-default-style]` (with `h1.ytd-watch-metadata` fallback) | 2026-04-14 |
-| ChatGPT input | `div[contenteditable="true"]` | 2026-03-13 |
-| ChatGPT send button | `button[data-testid="send-button"]` | 2026-03-13 |
-| ChatGPT model picker button | `button[data-testid="model-switcher-dropdown-button"]` | 2026-03-13 |
-| ChatGPT Auto model option | `[data-testid="model-switcher-gpt-5-3"]` | 2026-03-13 |
+| ChatGPT input | `div[contenteditable="true"]` | 2026-08-27 |
+| ChatGPT send button | `button[data-testid="send-button"]` (aria-label "Send prompt"; only exists once the composer has text) | 2026-08-27 |
+| ChatGPT mode pill | `button.__composer-pill` (text = current effort, e.g. "Instant" / "Medium" / "High") | 2026-08-27 |
+| ChatGPT mode menu | `[role="menuitem"]`s: "Advanced" accordion (click to expand, `aria-expanded`) → "Model…" / "Effort…" rows (hover opens submenu); effort radios `[role="menuitemradio"]` = Instant / Medium / High | 2026-08-27 |
 | Claude input | `div[role="textbox"]` / `.ProseMirror` | 2026-03-13 |
 | Claude send button | `button[aria-label="Send message"]` (lowercase m) | 2026-03-13 |
 
@@ -101,12 +101,34 @@ This extension was originally developed by Matias across three iterations:
 
 The code in this repo was imported from iteration #3 (the most feature-complete) and then fixed in Session 0.
 
-## Current State (last updated: 2026-04-14, end of Session 5)
+## Current State (last updated: 2026-08-27, end of Session 7)
 
-- **Version:** 1.5
+- **Version:** 1.6
 - **Git branch:** Working on `dev`, pushed to remote. `master` has not been updated since Session 0.
-- **Status:** Session 5 fixed the broken YouTube transcript extraction (CSS class rename). Tested and confirmed working by Matias in real Chrome.
+- **Status:** Session 7 fixed the ~1-minute delay when pasting into ChatGPT (the model/effort-switcher was hunting for a UI OpenAI had replaced, burning through all its timeouts before pasting). New logic verified live against chatgpt.com; awaiting Matias's reload + end-to-end confirmation.
+- **Two extension copies exist in the repo** — `extension/` and `youtube-summarizer/extension/` — and they are kept identical. Any fix must be applied to (or copied into) both.
 - **Repo visibility:** Public (https://github.com/matiasgar/YouTubeSummarizer)
+
+## What Was Done in Session 6 (early Aug 2026 — reconstructed from git, primer was not updated)
+
+Two commits landed without a primer update or version bump (version stayed 1.5):
+1. `2a8aff7` "Port Aug 2026 ChatGPT/Claude fixes into dev (both extension copies)" — rewrote the ChatGPT model switcher for the then-current UI: a `button.__composer-pill` showing e.g. "5.6 SolLight", opening Model (Sol/Terra/Luna) / Effort (Light…Max) / Speed (Standard/Fast) submenus; the code forced Model→Luna + Effort→Light + Speed→Standard in two passes. Also introduced the `waitForDom` MutationObserver helper, the `[LightSwitch]` on-page diagnostic banner, and the focus-the-sender-tab step.
+2. `f7e92b0` "Add Claude model downgrade: force Haiku 4.5 + Extended off before sending" — Claude-side equivalent (untouched in Session 7).
+
+## What Was Done in Session 7 (2026-08-27)
+
+Fixed the slow ChatGPT paste Matias reported (worked, but took ~1 minute instead of ~5 seconds).
+
+1. **Root cause (diagnosed live on chatgpt.com via Claude-in-Chrome):** OpenAI replaced the composer-pill menu again. The pill still exists but now shows the current **effort** ("Instant" / "Medium" / "High"); its menu is an Instant↔Thinking slider + an "Advanced" accordion containing only **Model** (GPT-5.6 Sol / GPT-5.5) and **Effort** (Instant/Medium/High) submenus. The Session 6 code hunted for "Luna" (model tier — gone), "Light" (effort name — now "Instant"), and a "Speed" submenu (gone), each hunt burning 3s+3s timeouts, twice over (two passes) ≈ 25–30s of dead waiting before the paste. It also waited 4s for the menu to close after a radio click, but the new menu stays open after clicks.
+2. **Fix — rewrote `forceChatGPTLightestMode()` in `content.js`:**
+   - **Fast path:** if the pill already says "Instant" (the common case), do nothing — measured ~1ms.
+   - **Switch path:** open pill menu → (legacy flat menu: click a top-level "Instant" radio if present) → expand "Advanced" if collapsed → hover "Effort" (click fallback) → click the "Instant" radio → verify pill text → Escape-close. Measured ~1.1s from "Medium" back to "Instant".
+   - **Hard time budget:** all menu interaction shares one 10s deadline (each wait capped to time remaining), so a future UI change degrades to a few seconds of delay and the paste proceeds anyway — never another minute of stacked timeouts. Also: if the composer renders but the pill class is missing, the function gives up after 2.5s instead of stalling 10s.
+   - **Dropped** the dead Luna/Light/Speed hunt entirely (no cheap "Luna" tier exists anymore; forcing a model is no longer needed — only Effort matters for quota).
+3. **Model no longer forced:** current models are GPT-5.6 Sol (default) and GPT-5.5 only; the extension leaves the model alone and only forces Effort→Instant.
+4. **Verified live on chatgpt.com (Matias's real logged-in session):** fast path 1ms; Medium→Instant switch 1066ms with menu left closed; send button confirmed still `button[data-testid="send-button"]` (aria-label now "Send prompt", appears only once the composer has text); composer `div[contenteditable="true"]` + `execCommand('insertText')` still work. Page was left exactly as found (Effort=Instant, composer empty).
+5. **Bumped version** to 1.6; synced both extension copies (`extension/` and `youtube-summarizer/extension/`).
+6. **Claude handler untouched** (no slowness reported there; not re-verified this session).
 
 ## What Was Done in Session 0 (2026-03-13)
 
@@ -297,10 +319,10 @@ If you see any of these when debugging:
 ### What ChatGPT / Claude selectors to watch
 
 Same fragility applies on the AI side. The current selectors (see table above) that are most likely to rotate:
-- ChatGPT send button's `data-testid="send-button"` has been stable but OpenAI renames these every few months
-- ChatGPT model picker `data-testid="model-switcher-gpt-5-3"` will break when OpenAI renames models (already happened between GPT-4o and GPT-5)
+- ChatGPT send button's `data-testid="send-button"` has been stable (aria-label changed to "Send prompt" by Aug 2026, but we match on the testid). Note it only exists once the composer has text.
+- ChatGPT's mode pill/menu has now been rebuilt by OpenAI twice in 2026 (model-switcher dropdown → Sol/Terra/Luna+Light+Speed submenus → Instant/Medium/High effort behind an "Advanced" accordion). Expect it to change again. **Design rule from Session 7: any mode-switching code must (a) have a fast path that exits without touching the menu when the pill already shows the target, and (b) run ALL menu waits under one shared ~10s deadline so a UI change can never again stack timeouts into a minute-long stall. The paste must always proceed regardless of switcher failure.**
 - Claude's send button has already flipped between `"Send Message"` and `"Send message"` casing — both are checked
-- ChatGPT uses Radix UI which requires `PointerEvent('pointerdown') + pointerup + click` on dropdowns. Plain `.click()` is silently ignored. This is documented in Session 2 and used in the model-switcher code path.
+- ChatGPT uses Radix UI which requires `PointerEvent('pointerdown') + pointerup + click` on buttons/menu radios and pointer *hover* events to open submenus. Plain `.click()` is silently ignored. As of Aug 2026, clicking a menu radio no longer closes the menu (it stays open) — close it explicitly with an Escape keydown on `document.body`.
 
 ## Session Hygiene Reminder
 

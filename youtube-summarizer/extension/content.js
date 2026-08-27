@@ -475,11 +475,19 @@ ${pageText}`;
         // Force ChatGPT to its lightest configuration before sending, so
         // summaries don't burn expensive model/reasoning quota.
         //
-        // As of Aug 2026 the composer pill (e.g. "5.6 SolLight") opens a menu of
-        // three submenus — Model (Sol/Terra/Luna), Effort (Light…Max) and Speed
-        // (Standard/Fast). We force Model→Luna (cheapest tier), Effort→Light,
-        // Speed→Standard. A legacy fallback still handles the pre-2026 flat
-        // Instant/Thinking/Pro menu, just in case OpenAI A/B-tests the old UI.
+        // As of late Aug 2026 the composer pill shows the current effort (e.g.
+        // "Instant", "Medium", "High", "Thinking") and opens a menu with an
+        // Instant↔Thinking slider plus an "Advanced" accordion containing
+        // Model (GPT-5.6 Sol / GPT-5.5 — the cheap "Luna" tier is gone) and
+        // Effort (Instant/Medium/High) submenus. Lightest config = Effort
+        // "Instant"; Model is left alone. The pre-Aug-2026 flat
+        // Instant/Thinking/Pro menu is also covered: its Instant option is a
+        // top-level radio, found before we go looking for the Effort submenu.
+        //
+        // All menu interaction shares one hard time budget, so if OpenAI
+        // changes the UI again the extension degrades to a few seconds of
+        // delay and pastes anyway — not a minute of stacked timeouts (which
+        // is what the dead Sol/Terra/Luna + Light + Speed hunt caused).
         async function forceChatGPTLightestMode() {
             const TAG = '[LightSwitch]';
             const banner = instantSwitchBanner();
@@ -488,100 +496,93 @@ ${pageText}`;
             try {
                 say(`starting (visibility=${document.visibilityState})`);
 
-                await waitForDom(() => !!document.querySelector('button.__composer-pill'), 10000);
-                const pill = document.querySelector('button.__composer-pill');
+                // Page-load wait: the pill renders alongside the composer. If
+                // the composer is up but the pill still isn't, the pill class
+                // was probably renamed — give up fast instead of stalling.
+                const getPill = () => document.querySelector('button.__composer-pill');
+                await waitForDom(() => !!getPill() || !!document.querySelector('div[contenteditable="true"]'), 10000);
+                if (!getPill()) await waitForDom(() => !!getPill(), 2500);
+                const pill = getPill();
                 if (!pill) {
                     warn('mode pill not found — skipping');
                     banner.log('composer button texts: ' + JSON.stringify(Array.from(document.querySelectorAll('form button')).map(b => b.textContent.trim().slice(0, 40))));
                     banner.fadeAfter(15000);
                     return;
                 }
-                say(`current pill = "${pill.textContent.trim()}"`);
 
-                const menuOpen = () => pill.getAttribute('aria-expanded') === 'true';
-                const openMenu = async () => {
-                    if (menuOpen()) return true;
-                    fire(pill);
-                    return waitForDom(() => menuOpen() && document.querySelectorAll('[role="menuitem"], [role="menuitemradio"]').length > 0, 5000);
-                };
-                const closeMenu = async () => {
-                    if (!menuOpen()) return;
-                    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-                    await waitForDom(() => !menuOpen(), 2000);
-                };
+                const pillText = () => pill.textContent.trim();
+                const isInstant = () => /instant/i.test(pillText());
+                say(`current pill = "${pillText()}"`);
 
-                // Fast path: pill already shows the target config.
-                const pillText = pill.textContent.trim();
-                if (/luna/i.test(pillText) && /light/i.test(pillText)) {
-                    say('already Luna + Light — done');
+                // Fast path — the usual case: effort already Instant, nothing
+                // to click at all.
+                if (isInstant()) {
+                    say('already Instant — done');
                     banner.fadeAfter(5000);
                     return;
                 }
 
-                // The three settings we force. Submenu triggers read like
-                // "ModelGPT-5.6 Sol" / "EffortLight" / "SpeedStandard" (label
-                // concatenated with current value).
-                const STEPS = [
-                    { label: 'Model', trigger: /^model/i, isTarget: (v) => /luna/i.test(v), radioMatch: (t) => /luna/i.test(t) && !/legacy/i.test(t) },
-                    { label: 'Effort', trigger: /^effort/i, isTarget: (v) => /^light\b/i.test(v), radioMatch: (t) => /^light$/i.test(t) },
-                    { label: 'Speed', trigger: /^speed/i, isTarget: (v) => /^standard/i.test(v), radioMatch: (t) => /^standard/i.test(t) },
-                ];
+                // Everything below shares this budget; each wait is capped to
+                // the time remaining (with a small floor so a check right at
+                // the deadline still gets one chance to observe the DOM).
+                const deadline = Date.now() + 10000;
+                const wait = (check, ms) => waitForDom(check, Math.max(250, Math.min(ms, deadline - Date.now())));
 
-                // Two passes: pass 2 re-reads each value and retries anything
-                // that didn't take (each radio click closes the whole menu).
-                let sawAnyTrigger = false;
-                for (let pass = 1; pass <= 2; pass++) {
-                    for (const step of STEPS) {
-                        if (!(await openMenu())) { warn('menu would not open'); continue; }
-                        const trigger = Array.from(document.querySelectorAll('[role="menuitem"]'))
-                            .find(el => step.trigger.test(el.textContent.trim()));
-                        if (!trigger) {
-                            if (pass === 1) say(`${step.label}: submenu trigger not found`);
-                            continue;
-                        }
-                        sawAnyTrigger = true;
-                        const value = trigger.textContent.trim().replace(step.trigger, '').trim();
-                        if (step.isTarget(value)) {
-                            if (pass === 1) say(`${step.label}: already "${value}"`);
-                            continue;
-                        }
+                const menuOpen = () => pill.getAttribute('aria-expanded') === 'true';
+                const findItem = (re) => Array.from(document.querySelectorAll('[role="menuitem"]')).find(el => re.test(el.textContent.trim()));
+                const findRadio = (re) => Array.from(document.querySelectorAll('[role="menuitemradio"]')).find(el => re.test(el.textContent.trim()));
+                const closeMenu = async () => {
+                    if (!menuOpen()) return;
+                    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                    await wait(() => !menuOpen(), 1500);
+                };
 
-                        // Radix submenus open on pointer hover; click and
-                        // keyboard are fallbacks.
-                        hover(trigger);
-                        let ok = await waitForDom(() => Array.from(document.querySelectorAll('[role="menuitemradio"]')).some(r => step.radioMatch(r.textContent.trim())), 3000);
+                fire(pill);
+                const opened = await wait(() => menuOpen() && document.querySelectorAll('[role="menuitem"], [role="menuitemradio"]').length > 0, 4000);
+                if (!opened) {
+                    warn('menu would not open — skipping');
+                    banner.fadeAfter(10000);
+                    return;
+                }
+
+                // Legacy flat menu exposes Instant as a top-level radio; the
+                // Aug 2026 menu tucks the effort radios behind Advanced → Effort.
+                let instantRadio = findRadio(/^instant\b/i);
+                if (!instantRadio) {
+                    const adv = findItem(/^advanced/i);
+                    if (adv && adv.getAttribute('aria-expanded') === 'false') {
+                        fire(adv); // accordion row, expands on click
+                        await wait(() => adv.getAttribute('aria-expanded') === 'true', 1500);
+                    }
+                    const effort = findItem(/^effort/i);
+                    if (!effort) {
+                        warn('Effort submenu trigger not found');
+                        banner.log('menu items: ' + JSON.stringify(Array.from(document.querySelectorAll('[role="menuitem"]')).map(e => e.textContent.trim().slice(0, 30))));
+                    } else {
+                        // Radix submenus open on pointer hover; click is the fallback.
+                        hover(effort);
+                        let ok = await wait(() => !!findRadio(/^instant\b/i), 2000);
                         if (!ok) {
-                            fire(trigger);
-                            ok = await waitForDom(() => Array.from(document.querySelectorAll('[role="menuitemradio"]')).some(r => step.radioMatch(r.textContent.trim())), 3000);
+                            fire(effort);
+                            ok = await wait(() => !!findRadio(/^instant\b/i), 2000);
                         }
-                        if (!ok) { warn(`${step.label}: submenu did not open`); await closeMenu(); continue; }
-
-                        const radio = Array.from(document.querySelectorAll('[role="menuitemradio"]')).find(r => step.radioMatch(r.textContent.trim()));
-                        fire(radio);
-                        await waitForDom(() => !menuOpen(), 4000);
-                        say(`${step.label}: "${value}" → clicked target; pill now "${pill.textContent.trim()}"`);
-                        await new Promise(r => setTimeout(r, 300));
+                        if (ok) instantRadio = findRadio(/^instant\b/i);
+                        else warn('Effort submenu did not open');
                     }
                 }
 
-                // Legacy fallback: the old flat Instant/Thinking/Pro menu.
-                if (!sawAnyTrigger) {
-                    say('no Model/Effort/Speed submenus — trying legacy flat menu');
-                    if (await openMenu()) {
-                        const instant = Array.from(document.querySelectorAll('[role="menuitemradio"]'))
-                            .find(el => /^instant\b/i.test((el.textContent || '').trim()));
-                        if (instant) {
-                            fire(instant);
-                            await waitForDom(() => !menuOpen(), 4000);
-                            say('legacy Instant clicked');
-                        } else {
-                            warn('legacy Instant item not found either');
-                        }
-                    }
+                if (instantRadio) {
+                    fire(instantRadio);
+                    // Clicking a radio no longer closes the menu (Aug 2026
+                    // UI); just wait for the pill to reflect the change.
+                    await wait(() => isInstant(), 2000);
+                    say(isInstant() ? 'switched to Instant' : `click did not take; pill = "${pillText()}"`);
+                } else {
+                    warn('no Instant option found — leaving mode as is');
                 }
 
                 await closeMenu();
-                say(`done; pill final = "${pill.textContent.trim()}"`);
+                say(`done; pill final = "${pillText()}"`);
                 banner.fadeAfter(8000);
             } catch (err) {
                 console.error(`${TAG} error:`, err);
